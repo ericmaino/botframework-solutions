@@ -18,6 +18,7 @@ using Microsoft.Bot.Builder.Dialogs;
 using Microsoft.Bot.Builder.Skills;
 using Microsoft.Bot.Builder.Skills.Models;
 using Microsoft.Bot.Builder.Solutions;
+using Microsoft.Bot.Builder.Solutions.Middleware;
 using Microsoft.Bot.Builder.Solutions.Resources;
 using Microsoft.Bot.Builder.Solutions.Responses;
 using Microsoft.Bot.Builder.Solutions.Util;
@@ -240,6 +241,9 @@ namespace CalendarSkill.Dialogs
                 {
                     await sc.Context.SendActivityAsync(ResponseManager.GetResponse(SummaryResponses.ShowNoMeetingMessage));
                     state.Clear();
+
+                    sc.Context.SetTurnName("NoMeeting");
+
                     return await sc.EndDialogAsync(true);
                 }
 
@@ -437,6 +441,8 @@ namespace CalendarSkill.Dialogs
 
                 await sc.Context.SendActivityAsync(await GetOverviewMeetingListResponseAsync(sc.Context, state, responseTemplateId, responseParams));
 
+                sc.Context.SetTurnName("ShowEventsOverview");
+
                 return await sc.NextAsync();
             }
             catch (SkillException ex)
@@ -465,6 +471,8 @@ namespace CalendarSkill.Dialogs
                 };
                 var responseTemplateId = SummaryResponses.ShowMeetingSummaryShortMessage;
                 await sc.Context.SendActivityAsync(await GetOverviewMeetingListResponseAsync(sc.Context, state, responseTemplateId, responseParams));
+
+                sc.Context.SetTurnName("ShowEventsOverview");
 
                 return await sc.NextAsync();
             }
@@ -711,6 +719,8 @@ namespace CalendarSkill.Dialogs
                     var replyMessage = await GetDetailMeetingResponseAsync(sc, eventItem, responseTemplateId, responseParams);
                     await sc.Context.SendActivityAsync(replyMessage);
                 }
+
+                sc.Context.SetTurnName("ReadEvent");
 
                 return await sc.NextAsync();
             }
