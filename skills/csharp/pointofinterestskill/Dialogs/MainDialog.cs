@@ -25,7 +25,8 @@ using PointOfInterestSkill.Services;
 
 namespace PointOfInterestSkill.Dialogs
 {
-    public class MainDialog : RouterDialog
+    // Dialog providing activity routing and message/event processing.
+    public class MainDialog : ActivityHandlerDialog
     {
         private BotServices _services;
         private ResponseManager _responseManager;
@@ -63,13 +64,15 @@ namespace PointOfInterestSkill.Dialogs
             AddDialog(getDirectionsDialog ?? throw new ArgumentNullException(nameof(getDirectionsDialog)));
         }
 
-        protected override async Task OnStartAsync(DialogContext dc, CancellationToken cancellationToken = default(CancellationToken))
+        // Runs when the dialog stack is empty, and a new member is added to the conversation. Can be used to send an introduction activity.
+        protected override async Task OnMembersAddedAsync(DialogContext dc, CancellationToken cancellationToken = default(CancellationToken))
         {
             // send a greeting if we're in local mode
             await dc.Context.SendActivityAsync(_responseManager.GetResponse(POIMainResponses.PointOfInterestWelcomeMessage));
         }
 
-        protected override async Task RouteAsync(DialogContext dc, CancellationToken cancellationToken = default(CancellationToken))
+        // Runs when the dialog stack is empty, and a new message activity comes in.
+        protected override async Task OnMessageActivityAsync(DialogContext dc, CancellationToken cancellationToken = default(CancellationToken))
         {
             // get current activity locale
             var locale = CultureInfo.CurrentUICulture.TwoLetterISOLanguageName;
@@ -131,7 +134,8 @@ namespace PointOfInterestSkill.Dialogs
             }
         }
 
-        protected override async Task CompleteAsync(DialogContext dc, DialogTurnResult result = null, CancellationToken cancellationToken = default(CancellationToken))
+        // Runs when the dialog stack completes.
+        protected override async Task OnDialogCompleteAsync(DialogContext dc, object result = null, CancellationToken cancellationToken = default(CancellationToken))
         {
             // workaround. if connect skill directly to teams, the following response does not work.
             if (dc.Context.Adapter is IRemoteUserTokenProvider remoteInvocationAdapter || Channel.GetChannelId(dc.Context) != Channels.Msteams)
@@ -146,7 +150,8 @@ namespace PointOfInterestSkill.Dialogs
             await dc.EndDialogAsync(result);
         }
 
-        protected override async Task OnEventAsync(DialogContext dc, CancellationToken cancellationToken = default(CancellationToken))
+        // Runs when a new event activity comes in.
+        protected override async Task OnEventActivityAsync(DialogContext dc, CancellationToken cancellationToken = default(CancellationToken))
         {
             var state = await _stateAccessor.GetAsync(dc.Context, () => new PointOfInterestSkillState());
 
@@ -180,6 +185,7 @@ namespace PointOfInterestSkill.Dialogs
             }
         }
 
+        // Runs on every turn of the conversation to check if the conversation should be interrupted.
         protected override async Task<InterruptionAction> OnInterruptDialogAsync(DialogContext dc, CancellationToken cancellationToken = default(CancellationToken))
         {
             var result = InterruptionAction.NoAction;
@@ -267,15 +273,14 @@ namespace PointOfInterestSkill.Dialogs
         private async Task<InterruptionAction> OnCancel(DialogContext dc)
         {
             await dc.Context.SendActivityAsync(_responseManager.GetResponse(POIMainResponses.CancelMessage));
-            await CompleteAsync(dc);
             await dc.CancelAllDialogsAsync();
-            return InterruptionAction.StartedDialog;
+            return InterruptionAction.End;
         }
 
         private async Task<InterruptionAction> OnHelp(DialogContext dc)
         {
             await dc.Context.SendActivityAsync(_responseManager.GetResponse(POIMainResponses.HelpMessage));
-            return InterruptionAction.MessageSentToUser;
+            return InterruptionAction.Resume;
         }
 
         private async Task<InterruptionAction> OnLogout(DialogContext dc)
@@ -302,7 +307,7 @@ namespace PointOfInterestSkill.Dialogs
 
             await dc.Context.SendActivityAsync(_responseManager.GetResponse(POIMainResponses.LogOut));
 
-            return InterruptionAction.StartedDialog;
+            return InterruptionAction.End;
         }
 
         private async Task DigestLuisResult(DialogContext dc, PointOfInterestLuis luisResult)
